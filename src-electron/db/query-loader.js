@@ -643,11 +643,6 @@ async function insertGlobals(db, packageId, data) {
  * @returns Promise of cluster extension insertion.
  */
 async function insertClusterExtensions(db, packageId, knownPackages, data) {
-  console.log(`known packages passed ${knownPackages}`)
-  console.log(
-    `SELECT CLUSTER_ID FROM CLUSTER WHERE PACKAGE_REF IN (${dbApi.toInClause(knownPackages)}) AND CODE = ?`
-  )
-  console.log(data.map((cluster) => [cluster.code]))
   return dbApi
     .dbMultiSelect(
       db,
@@ -677,31 +672,23 @@ async function insertClusterExtensions(db, packageId, knownPackages, data) {
         let row = rows[i]
         if (row != null) {
           lastId = row.CLUSTER_ID
-          // check if cluster extension is already loaded for current toplevel package
-          let isClusterExtensionReload = await clusterExtensionReload(
-            db,
-            packageId,
-            lastId
-          )
-          if (!isClusterExtensionReload) {
-            // NOTE: This code must stay in sync with insertClusters
-            if ('commands' in data[i]) {
-              let cmds = data[i].commands
-              commands.data.push(...commandMap(lastId, packageId, cmds))
-              commands.args.push(...cmds.map((command) => command.args))
-              commands.access.push(...cmds.map((command) => command.access))
-            }
-            if ('attributes' in data[i]) {
-              let atts = data[i].attributes
-              attributes.data.push(...attributeMap(lastId, packageId, atts))
-              attributes.access.push(...atts.map((at) => at.access))
-            }
-            if ('events' in data[i]) {
-              let evs = data[i].events
-              events.data.push(...eventMap(lastId, packageId, evs))
-              events.fields.push(...evs.map((event) => event.fields))
-              events.access.push(...evs.map((event) => event.access))
-            }
+          // NOTE: This code must stay in sync with insertClusters
+          if ('commands' in data[i]) {
+            let cmds = data[i].commands
+            commands.data.push(...commandMap(lastId, packageId, cmds))
+            commands.args.push(...cmds.map((command) => command.args))
+            commands.access.push(...cmds.map((command) => command.access))
+          }
+          if ('attributes' in data[i]) {
+            let atts = data[i].attributes
+            attributes.data.push(...attributeMap(lastId, packageId, atts))
+            attributes.access.push(...atts.map((at) => at.access))
+          }
+          if ('events' in data[i]) {
+            let evs = data[i].events
+            events.data.push(...eventMap(lastId, packageId, evs))
+            events.fields.push(...evs.map((event) => event.fields))
+            events.access.push(...evs.map((event) => event.access))
           }
         } else {
           // DANGER: We got here because we are adding a cluster extension for a
@@ -730,59 +717,15 @@ async function insertClusterExtensions(db, packageId, knownPackages, data) {
       let pCommand = insertCommands(db, packageId, commands)
       let pAttribute = insertAttributes(db, packageId, attributes)
       let pEvent = insertEvents(db, packageId, events)
-      return Promise.all([pCommand, pAttribute, pEvent])
-    })
-}
-
-/**
- * Helper function that checks if clusterExtension is already loaded
- * for current toplevel package.
- *
- * @param {*} db
- * @param {*} packageId
- * @param {*} clusterId
- * @returns Promise of boolean indicating if cluster extension is already loaded.
- */
-async function clusterExtensionReload(db, packageId, clusterId) {
-  return dbApi
-    .dbGet(
-      db,
-      `
-    SELECT 1
-    FROM CLUSTER c
-    WHERE c.CLUSTER_ID = ?
-    AND (
-      EXISTS (
-        SELECT 1 
-        FROM ATTRIBUTE a 
-        WHERE a.CLUSTER_REF = c.CLUSTER_ID 
-        AND a.PACKAGE_REF = ?
-      )
-      OR EXISTS (
-        SELECT 1 
-        FROM COMMAND cmd 
-        WHERE cmd.CLUSTER_REF = c.CLUSTER_ID 
-        AND cmd.PACKAGE_REF = ?
-      )
-      OR EXISTS (
-        SELECT 1 
-        FROM EVENT e 
-        WHERE e.CLUSTER_REF = c.CLUSTER_ID 
-        AND e.PACKAGE_REF = ?
-      )
-    )
-    `,
-      [clusterId, packageId, packageId, packageId]
-    )
-    .then((row) => {
-      console.log(row)
-      if (row != null) {
-        console.log('This cluster extension is already loaded')
-        return true
-      } else {
-        console.log('not reload')
-        return false
-      }
+      return Promise.all([pCommand, pAttribute, pEvent]).catch((err) => {
+        if (err.includes('SQLITE_CONSTRAINT') && err.includes('UNIQUE')) {
+          env.logDebug(
+            `CRC match for file with package id ${packageId}, skipping parsing.`
+          )
+        } else {
+          throw err
+        }
+      })
     })
 }
 
