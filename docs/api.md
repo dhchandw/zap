@@ -3682,7 +3682,6 @@ This module provides queries for ZCL loading
     * [~insertCommands(db, packageId, commands)](#module_DB API_ zcl loading queries..insertCommands) ⇒
     * [~insertGlobals(db, packageId, data)](#module_DB API_ zcl loading queries..insertGlobals) ⇒
     * [~insertClusterExtensions(db, packageId, data)](#module_DB API_ zcl loading queries..insertClusterExtensions) ⇒
-    * [~clusterExtensionReload(db, packageId, clusterId)](#module_DB API_ zcl loading queries..clusterExtensionReload) ⇒
     * [~insertClusters(db, packageId, data)](#module_DB API_ zcl loading queries..insertClusters) ⇒
     * [~insertFeatures(db, packageId, data)](#module_DB API_ zcl loading queries..insertFeatures) ⇒
     * [~insertTags(db, packageId, data)](#module_DB API_ zcl loading queries..insertTags) ⇒
@@ -3913,21 +3912,6 @@ Inserts cluster extensions into the database.
 | db | <code>\*</code> | 
 | packageId | <code>\*</code> | 
 | data | <code>\*</code> | 
-
-<a name="module_DB API_ zcl loading queries..clusterExtensionReload"></a>
-
-### DB API: zcl loading queries~clusterExtensionReload(db, packageId, clusterId) ⇒
-Helper function that checks if clusterExtension is already loaded
-for current toplevel package.
-
-**Kind**: inner method of [<code>DB API: zcl loading queries</code>](#module_DB API_ zcl loading queries)  
-**Returns**: Promise of boolean indicating if cluster extension is already loaded.  
-
-| Param | Type |
-| --- | --- |
-| db | <code>\*</code> | 
-| packageId | <code>\*</code> | 
-| clusterId | <code>\*</code> | 
 
 <a name="module_DB API_ zcl loading queries..insertClusters"></a>
 
