@@ -578,6 +578,7 @@ test(
     })
     let state = await exportJs.createStateFromDatabase(db, sid)
 
+    console.log(state.package)
     expect(state.package[0].path).toBe(
       '../../zcl-builtin/matter/zcl-with-test-extensions.json'
     )
