@@ -28,6 +28,26 @@ const zclUtil = require('../util/zcl-util')
 const dbEnum = require('../../src-shared/db-enum')
 
 /**
+ * Extracts attribute quality flags based on the properties of the current context (`this`).
+ * @returns {Array<string>} - A list of quality flags.
+ */
+function extractAttributeQualityFlags() {
+  let result = []
+
+  // Check if the attribute has the 'mustUseTimedWrite' quality.
+  if (this.mustUseTimedWrite) {
+    result.push('DataModel::AttributeQualityFlags::kTimed')
+  }
+
+  // Check if the attribute is an array (list).
+  if (this.isArray) {
+    result.push('DataModel::AttributeQualityFlags::kListAttribute')
+  }
+
+  return result
+}
+
+/**
  * Get feature bits from the given context.
  * @param {*} options
  * @returns feature bits
@@ -172,3 +192,4 @@ exports.global_attribute_default = attributeDefault
 exports.feature_bits = featureBits
 exports.as_underlying_atomic_identifier_for_attribute_id =
   as_underlying_atomic_identifier_for_attribute_id
+exports.extract_attribute_quality_flags = extractAttributeQualityFlags

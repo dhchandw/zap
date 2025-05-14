@@ -405,6 +405,27 @@ async function if_command_fixed_length(commandId, options) {
   return options.fn(this)
 }
 
+/**
+ * Extracts command quality flags based on the properties of the current context (`this`).
+ * @returns {Array<string>} - A list of quality flags.
+ */
+function extractCommandQualityFlags() {
+  let result = []
+  // Check if the command has the 'FabricScoped' quality.
+  if (this.isFabricScoped) {
+    result.push('DataModel::CommandQualityFlags::kFabricScoped')
+  }
+
+  // Check if the command has the 'TimedInvoke' quality.
+  if (this.mustUseTimedInvoke) {
+    result.push('DataModel::CommandQualityFlags::kTimed')
+  }
+
+  // TODO: Add support for kLargeMessage if available in the future.
+
+  return result
+}
+
 // WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
 //
 // Note: these exports are public API. Templates that might have been created in the past and are
@@ -444,3 +465,4 @@ exports.if_command_arg_not_always_present_with_presentif =
 exports.if_command_arg_always_present_with_presentif =
   if_command_arg_always_present_with_presentif
 exports.if_command_args_exist = if_command_args_exist
+exports.extract_command_quality_flags = extractCommandQualityFlags

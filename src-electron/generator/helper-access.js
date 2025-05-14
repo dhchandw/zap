@@ -237,6 +237,54 @@ async function default_access(options) {
   return templateUtil.templatePromise(this.global, p)
 }
 
+/**
+ * Determines the access role for a given entity and operation.
+ *
+ * @param {*} options
+ * @returns {string} The access role.
+ * @throws {Error} If the required 'op' option is missing.
+ */
+async function chipGetAccessRole(options) {
+  if (!('op' in options.hash)) {
+    throw new Error('Access helper requires op from the op="<op>" option.')
+  }
+
+  const { op, entity: entityType } = options.hash
+  const accessList = await collectAccesslist(this, options)
+  const accessForOp = accessList.find((a) => a.operation === op)
+
+  if (accessForOp?.role) {
+    return accessForOp.role
+  }
+
+  // Default role mappings
+  const defaultRoles = {
+    command: { invoke: 'operate' },
+    attribute: { read: 'view', write: 'operate' }
+  }
+
+  return defaultRoles[entityType]?.[op] || ''
+}
+
+/**
+ * Maps a role to its corresponding privilege constant.
+ *
+ * @param {string} role - The role to map.
+ * @returns {string} The corresponding privilege constant, or "" if the role is invalid.
+ */
+function chipAsPrivilege(role) {
+  const roleToPrivilegeMap = {
+    view: 'Access::Privilege::kView',
+    operate: 'Access::Privilege::kOperate',
+    manage: 'Access::Privilege::kManage',
+    administer: 'Access::Privilege::kAdminister'
+  }
+
+  return roleToPrivilegeMap[role] || ''
+}
+
 exports.access = access
 exports.access_aggregate = access_aggregate
 exports.default_access = default_access
+exports.chip_get_access_role = chipGetAccessRole
+exports.chip_as_privilege = chipAsPrivilege

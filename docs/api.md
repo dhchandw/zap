@@ -8915,6 +8915,8 @@ This module contains the API for templating. For more detailed instructions, rea
     * [~access_aggregate(options)](#module_Templating API_ Access helpers..access_aggregate)
     * [~access(options)](#module_Templating API_ Access helpers..access)
     * [~default_access(options)](#module_Templating API_ Access helpers..default_access) ⇒
+    * [~chipGetAccessRole(options)](#module_Templating API_ Access helpers..chipGetAccessRole) ⇒ <code>string</code>
+    * [~chipAsPrivilege(role)](#module_Templating API_ Access helpers..chipAsPrivilege) ⇒ <code>string</code>
 
 <a name="module_Templating API_ Access helpers..collectDefaultAccessList"></a>
 
@@ -8979,6 +8981,34 @@ Get the access list information.
 | --- | --- |
 | options | <code>\*</code> | 
 
+<a name="module_Templating API_ Access helpers..chipGetAccessRole"></a>
+
+### Templating API: Access helpers~chipGetAccessRole(options) ⇒ <code>string</code>
+Determines the access role for a given entity and operation.
+
+**Kind**: inner method of [<code>Templating API: Access helpers</code>](#module_Templating API_ Access helpers)  
+**Returns**: <code>string</code> - The access role.  
+**Throws**:
+
+- <code>Error</code> If the required 'op' option is missing.
+
+
+| Param | Type |
+| --- | --- |
+| options | <code>\*</code> | 
+
+<a name="module_Templating API_ Access helpers..chipAsPrivilege"></a>
+
+### Templating API: Access helpers~chipAsPrivilege(role) ⇒ <code>string</code>
+Maps a role to its corresponding privilege constant.
+
+**Kind**: inner method of [<code>Templating API: Access helpers</code>](#module_Templating API_ Access helpers)  
+**Returns**: <code>string</code> - The corresponding privilege constant, or "" if the role is invalid.  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| role | <code>string</code> | The role to map. |
+
 <a name="module_Templating API_ Attribute helpers"></a>
 
 ## Templating API: Attribute helpers
@@ -8986,10 +9016,18 @@ This module contains the API for templating. For more detailed instructions, rea
 
 
 * [Templating API: Attribute helpers](#module_Templating API_ Attribute helpers)
+    * [~extractAttributeQualityFlags()](#module_Templating API_ Attribute helpers..extractAttributeQualityFlags) ⇒ <code>Array.&lt;string&gt;</code>
     * [~featureBits(options)](#module_Templating API_ Attribute helpers..featureBits) ⇒
     * [~attributeDefault()](#module_Templating API_ Attribute helpers..attributeDefault) ⇒
     * [~as_underlying_atomic_identifier_for_attribute_id(attributeId)](#module_Templating API_ Attribute helpers..as_underlying_atomic_identifier_for_attribute_id)
 
+<a name="module_Templating API_ Attribute helpers..extractAttributeQualityFlags"></a>
+
+### Templating API: Attribute helpers~extractAttributeQualityFlags() ⇒ <code>Array.&lt;string&gt;</code>
+Extracts attribute quality flags based on the properties of the current context (`this`).
+
+**Kind**: inner method of [<code>Templating API: Attribute helpers</code>](#module_Templating API_ Attribute helpers)  
+**Returns**: <code>Array.&lt;string&gt;</code> - - A list of quality flags.  
 <a name="module_Templating API_ Attribute helpers..featureBits"></a>
 
 ### Templating API: Attribute helpers~featureBits(options) ⇒
@@ -9483,6 +9521,7 @@ This module contains the API for templating. For more detailed instructions, rea
     * [~if_command_arg_not_always_present_with_presentif(commandArg, options)](#module_Templating API_ Command helpers..if_command_arg_not_always_present_with_presentif) ⇒
     * [~if_command_is_fixed_length(commandId, fixedLengthReturn, notFixedLengthReturn)](#module_Templating API_ Command helpers..if_command_is_fixed_length)
     * [~if_command_fixed_length(commandId, options)](#module_Templating API_ Command helpers..if_command_fixed_length)
+    * [~extractCommandQualityFlags()](#module_Templating API_ Command helpers..extractCommandQualityFlags) ⇒ <code>Array.&lt;string&gt;</code>
 
 <a name="module_Templating API_ Command helpers..if_command_arguments_exist"></a>
 
@@ -9685,6 +9724,13 @@ command is not fixed length
 | commandId |  |
 | options | Returns content in the handlebar template based on the command being fixed length or not as shown in the example above. |
 
+<a name="module_Templating API_ Command helpers..extractCommandQualityFlags"></a>
+
+### Templating API: Command helpers~extractCommandQualityFlags() ⇒ <code>Array.&lt;string&gt;</code>
+Extracts command quality flags based on the properties of the current context (`this`).
+
+**Kind**: inner method of [<code>Templating API: Command helpers</code>](#module_Templating API_ Command helpers)  
+**Returns**: <code>Array.&lt;string&gt;</code> - - A list of quality flags.  
 <a name="module_Templating API_ Matter endpoint config helpers"></a>
 
 ## Templating API: Matter endpoint config helpers
