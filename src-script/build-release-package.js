@@ -51,6 +51,11 @@ async function buildForOS(osName, outputPath) {
       console.log(`Building for Windows... Output: ${outputPath}`)
       await scriptUtil.executeCmd({}, 'npm', ['run', 'pack:win']) // Building electron app
       await scriptUtil.executeCmd({}, 'npm', ['run', 'pkg:win']) // Building zap-cli
+      await scriptUtil.executeCmd({}, 'node', [
+        'src-script/windows-inject-metadata.js',
+        'dist/zap-win-x64.exe',
+        'dist/zap-win-arm64.exe'
+      ]) // Inject Windows metadata
       await scriptUtil.executeCmd({}, 'npm', ['run', 'pack:cli:win']) // Adding zap-cli to zip file
       if (outputPath) {
         await scriptUtil.executeCmd({}, 'mv', [
