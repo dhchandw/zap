@@ -1,0 +1,16 @@
+# Matter dimmable light endpoint configuration for `zap edit apply`.
+# Endpoint 0 (MA-rootdevice) is created by `zap edit new` / `--new`.
+- op: endpoint.create
+  endpoint: 1
+  deviceType: MA-dimmablelight
+- op: attribute.set
+  endpoint: 1
+  cluster: Level Control
+  attribute: CurrentLevel
+  enabled: true
+  default: '25'
+- op: command.enable
+  endpoint: 1
+  cluster: Level Control
+  command: MoveToLevel
+  direction: in

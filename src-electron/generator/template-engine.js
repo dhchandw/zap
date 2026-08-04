@@ -72,12 +72,39 @@ const precompiledTemplates = {}
 
 const handlebarsInstance = {}
 
-// Per-render idle watchdog: a render is killed if it makes no progress
+// Idle watchdog: renders are killed if rendering makes no progress
 // (no helper invocation, no deferred block) for this long. Reset on activity
 // so long-but-healthy generations keep running.
-const TEMPLATE_RENDER_IDLE_TIMEOUT = 60000 // 1 minute of no progress
+const TEMPLATE_RENDER_IDLE_TIMEOUT = 120000 // 2 minutes of no progress
 // Absolute safety net; a render cannot exceed this even if it keeps kicking.
 const TEMPLATE_RENDER_HARD_TIMEOUT = 540000 // 9 minutes
+
+// Templates are rendered concurrently on a single event loop and against a
+// single database, so a render is only truly hung if nothing at all is
+// happening. Tracking progress per render would flag a big templates as
+// stalled merely because hundreds of sibling renders got to the database
+// first, hence one shared set of the in-flight watchdogs.
+const activeRenderWatchdogs = new Set()
+
+// This runs on every helper invocation, so broadcasting to each in-flight
+// watchdog every time costs seconds over a large generation. Kicking the
+// watchdogs this often is pointless against TEMPLATE_RENDER_IDLE_TIMEOUT, so
+// broadcasts are throttled to keep the common path a single clock read.
+const PROGRESS_BROADCAST_INTERVAL = 1000
+let lastProgressBroadcast = 0
+
+/**
+ * Reports that template rendering made progress, keeping the idle watchdog of
+ * every in-flight render alive.
+ */
+function reportRenderProgress() {
+  const now = performance.now()
+  if (now - lastProgressBroadcast < PROGRESS_BROADCAST_INTERVAL) return
+  lastProgressBroadcast = now
+  for (const renderWatchdog of activeRenderWatchdogs) {
+    renderWatchdog.reset(now)
+  }
+}
 
 /**
  * Resolves into a precompiled template, either from previous precompile or freshly compiled.
@@ -124,7 +151,8 @@ async function produceIterativeContent(
   let iterationArray = await templateIterators.getIterativeObject(
     singleTemplatePkg.iterator,
     db,
-    sessionId
+    sessionId,
+    genTemplateJsonPackage?.category
   )
 
   const pool = options.iterationPool
@@ -251,7 +279,7 @@ async function produceContent(
   }
   let content
   // Render the template (main pass + deferred blocks) under two timers:
-  //  - An idle watchdog that trips only if the render makes no progress
+  //  - An idle watchdog that trips only if rendering makes no progress
   //    for TEMPLATE_RENDER_IDLE_TIMEOUT ms (reset on every helper call and
   //    on each deferred block). This catches true hangs quickly without
   //    penalizing large, healthy generations.
@@ -278,14 +306,16 @@ async function produceContent(
     )
     if (typeof hardTimer.unref === 'function') hardTimer.unref()
   })
-  context.global.watchdog = idleWatchdog
+  if (idleWatchdog != null) {
+    activeRenderWatchdogs.add(idleWatchdog)
+  }
   try {
     content = await Promise.race([
       (async () => {
         const mainContent = await template(context)
         const deferredParts = await Promise.all(
           context.global.deferredBlocks.map((block) => {
-            idleWatchdog.reset()
+            reportRenderProgress()
             return block(context)
           })
         )
@@ -309,9 +339,11 @@ async function produceContent(
     )
     throw error
   } finally {
-    idleWatchdog?.stop()
+    if (idleWatchdog != null) {
+      activeRenderWatchdogs.delete(idleWatchdog)
+      idleWatchdog.stop()
+    }
     if (hardTimer != null) clearTimeout(hardTimer)
-    context.global.watchdog = null
   }
   return [
     {
@@ -387,9 +419,10 @@ function loadPartial(hb, name, data) {
  */
 function helperWrapper(wrappedHelper) {
   return function w(...args) {
-    // Kick the per-render watchdog: a helper call is a sign of progress,
-    // so the idle timer should not expire.
-    this.global?.watchdog?.reset()
+    // A helper call is a sign of progress, so the idle watchdogs should not
+    // expire. This cannot go through `this.global`, which is absent in plain
+    // handlebars subcontexts such as the body of an `{{#each}}` block.
+    reportRenderProgress()
     let helperName = wrappedHelper.name
     if (wrappedHelper.originalHelper != null) {
       helperName = wrappedHelper.originalHelper

@@ -34,14 +34,55 @@
  * @returns {{ reset: Function, stop: Function }}
  */
 function createWatchdog(expirationInterval, triggerFunction) {
-  let id = setTimeout(triggerFunction, expirationInterval)
-  // Do not keep the event loop alive just because of this timer.
-  if (typeof id.unref === 'function') id.unref()
   let stopped = false
+  let lastActivity = performance.now()
+  let id = null
+
+  /**
+   * Arms the watchdog timer for the given interval.
+   * @param {number} interval - ms until the next expire check.
+   */
+  function arm(interval) {
+    id = setTimeout(expire, interval)
+    // Do not keep the event loop alive just because of this timer.
+    if (typeof id.unref === 'function') id.unref()
+  }
+
+  /**
+   * Handles watchdog expiry: re-arms if activity was recent, otherwise triggers.
+   */
+  function expire() {
+    if (stopped) return
+    // Timers fire late when the event loop is blocked, so by the time we get
+    // here activity may already have been recorded. Compare against the last
+    // activity instead of trusting the timer, and re-arm for whatever time is
+    // left, so only genuine inactivity triggers.
+    let idleTime = performance.now() - lastActivity
+    if (!(idleTime >= 0)) {
+      // reset() was handed a timestamp that did not come from this clock, so
+      // it is either not a number or lies in the future. Restart from now,
+      // which costs one extra interval instead of muting the watchdog.
+      lastActivity = performance.now()
+      arm(expirationInterval)
+    } else if (idleTime < expirationInterval) {
+      arm(expirationInterval - idleTime)
+    } else {
+      id = null
+      triggerFunction()
+    }
+  }
+
+  arm(expirationInterval)
+
   return {
-    reset() {
+    /**
+     * Records activity so the idle timer does not expire.
+     * @param {number} [time=performance.now()] - optional pre-computed timestamp
+     *   for callers that reset many watchdogs in one pass.
+     */
+    reset(time = performance.now()) {
       if (stopped) return
-      if (id != null && typeof id.refresh === 'function') id.refresh()
+      lastActivity = time
     },
     stop() {
       stopped = true

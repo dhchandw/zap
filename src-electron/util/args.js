@@ -28,6 +28,7 @@ const fs = require('fs')
 const restApi = require('../../src-shared/rest-api.js')
 const commonUrl = require('../../src-shared/common-url.js')
 const env = require('./env.js')
+const cliCommands = require('../cli/cli-commands.js')
 
 /**
  * Get environment variable details.
@@ -64,6 +65,57 @@ function expandCommaSeparatedZapPaths(tokens) {
 }
 
 /**
+ * Applies the settings that every command needs regardless of how it was
+ * parsed: the Jenkins adjustments, the save file format, the emoji preference
+ * and the state directory.
+ *
+ * @param {*} ret Parsed arguments, modified in place.
+ * @returns {*} the same parsed arguments
+ */
+function applyEnvironmentSettings(ret) {
+  if (ret.jenkins) {
+    console.log(
+      env.formatEmojiMessage(
+        '🔧',
+        'Detected Jenkins environment. Making necessary adjustments.'
+      )
+    )
+    if (process.env[env.environmentVariable.skipPostGen.name] == null) {
+      ret.skipPostGen = true
+    }
+    if (process.env[env.environmentVariable.uniqueStateDir.name] == null) {
+      ret.tempState = true
+    }
+  }
+
+  env.setSaveFileFormat(ret.saveFileFormat)
+
+  // Set emoji preference via environment variable
+  if (ret.noEmoji) {
+    process.env.NO_EMOJI = '1'
+  }
+
+  if (ret.tempState) {
+    let tempDir = fs.mkdtempSync(`${os.tmpdir()}${path.sep}zap.`)
+    console.log(
+      env.formatEmojiMessage(
+        '🔧',
+        `Using temporary state directory: ${env.setAppDirectory(tempDir)}`
+      )
+    )
+  } else {
+    console.log(
+      env.formatEmojiMessage(
+        '🔧',
+        `Using state directory: ${env.setAppDirectory(ret.stateDirectory)}`
+      )
+    )
+  }
+
+  return ret
+}
+
+/**
  * Process the command line arguments and resets the state in this file
  * to the specified values.
  *
@@ -72,6 +124,19 @@ function expandCommaSeparatedZapPaths(tokens) {
  * @returns parsed argv object
  */
 export function processCommandLineArguments(argv) {
+  // `edit` has a nested subcommand tree of its own, so it gets parsed by a
+  // dedicated parser instead of the flat one below. That keeps per-subcommand
+  // help and required-option checking working.
+  if (cliCommands.isEditCommandLine(argv)) {
+    // The console has to be routed before anything else prints, because the
+    // state directory notice below already goes to stdout.
+    return applyEnvironmentSettings(
+      cliCommands.routeConsoleForMachineOutput(
+        cliCommands.parseEditCommandLine(argv)
+      )
+    )
+  }
+
   let zapVersion = env.zapVersion()
   let commands = new Map([
     ['generate', 'Generate ZCL artifacts.'],
@@ -83,7 +148,11 @@ export function processCommandLineArguments(argv) {
     ['stop', 'Stop zap server if one is running.'],
     ['new', 'If in client mode, start a new window on a main instance.'],
     ['regenerateSdk', 'Perform full SDK regeneration.'],
-    ['validate', 'Validate ZCL/Data-Model elements in one or more .zap files.']
+    ['validate', 'Validate ZCL/Data-Model elements in one or more .zap files.'],
+    [
+      'edit',
+      'Edit a .zap file: endpoints, device types, clusters, attributes, commands and events. See: zap edit --help'
+    ]
   ])
   let y = yargs
   for (let cmd of commands.entries()) {
@@ -292,29 +361,6 @@ For more information, see ${commonUrl.projectUrl}`
     .wrap(null)
     .parse(argv)
 
-  // Apply Jenkins logic.
-  if (ret.jenkins) {
-    console.log(
-      env.formatEmojiMessage(
-        '🔧',
-        'Detected Jenkins environment. Making necessary adjustments.'
-      )
-    )
-    if (process.env[env.environmentVariable.skipPostGen.name] == null) {
-      ret.skipPostGen = true
-    }
-    if (process.env[env.environmentVariable.uniqueStateDir.name] == null) {
-      ret.tempState = true
-    }
-  }
-
-  env.setSaveFileFormat(ret.saveFileFormat)
-
-  // Set emoji preference via environment variable
-  if (ret.noEmoji) {
-    process.env.NO_EMOJI = '1'
-  }
-
   // Collect files that are passed as loose arguments
   let allFiles = ret._.filter((arg, index) => {
     if (index == 0) return false
@@ -353,22 +399,5 @@ For more information, see ${commonUrl.projectUrl}`
     ret.zapFileExtensions = allZapFileExtensions
   }
 
-  if (ret.tempState) {
-    let tempDir = fs.mkdtempSync(`${os.tmpdir()}${path.sep}zap.`)
-    console.log(
-      env.formatEmojiMessage(
-        '🔧',
-        `Using temporary state directory: ${env.setAppDirectory(tempDir)}`
-      )
-    )
-  } else {
-    console.log(
-      env.formatEmojiMessage(
-        '🔧',
-        `Using state directory: ${env.setAppDirectory(ret.stateDirectory)}`
-      )
-    )
-  }
-
-  return ret
+  return applyEnvironmentSettings(ret)
 }
