@@ -102,3 +102,4 @@ artifacts
 # Usual test names
 test-regen
 test-output/
+examples/dimmable-light-app/gen/
